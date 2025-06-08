@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Absensi - Campus Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'pulse-slow': 'pulse 3s ease-in-out infinite',
+                        'bounce-slow': 'bounce 2s infinite',
+                        'scan': 'scan 2s ease-in-out infinite',
+                        'scan-offline': 'scan-offline 1s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        scan: {
+                            '0%, 100%': { transform: 'scale(1)', opacity: '1' },
+                            '50%': { transform: 'scale(1.1)', opacity: '0.8' }
+                        },
+                        'scan-offline': {
+                            '0%, 100%': { transform: 'scale(1)', opacity: '0.5' },
+                            '50%': { transform: 'scale(1.02)', opacity: '0.3' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gradient-to-br from-purple-50 to-blue-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="text-xl font-bold text-gray-800">Sistem Absensi</span>
+                        <div class="text-xs text-gray-500">Manual Fingerprint Scanner</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="nav-status" class="flex items-center space-x-2 text-sm text-gray-600">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                        <span>Checking...</span>
+                    </div>
+                    <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                        Kembali ke Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">Lakukan Absensi</h1>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                Pilih mata kuliah dan klik tombol scan untuk melakukan absensi fingerprint
+            </p>
+        </div>
+
+        <!-- ESP32 Connection Status -->
+        <div class="bg-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-1">Status Koneksi ESP32</h3>
+                    <p class="text-sm text-gray-600">Status fingerprint scanner hardware</p>
+                </div>
+                <button onclick="checkESP32Connection()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-300 text-sm">
+                    <svg class="w-4 h-4 inline-block mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+            
+            <div id="esp32-connection-status" class="mt-4 p-4 bg-gray-50 rounded-lg">
+                <div class="flex items-center space-x-3">
+                    <div class="w-3 h-3 bg-gray-500 rounded-full animate-pulse"></div>
+                    <p class="text-gray-600">Memeriksa koneksi ESP32...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAMBAHAN BARU: Real-time Instructions Display -->
+        <div id="instructions-panel" class="bg-white rounded-xl shadow-lg p-6 mb-8 hidden">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-bold text-gray-900">Instruksi Scanner Real-time</h3>
+                <button onclick="clearInstructions()" class="text-gray-500 hover:text-gray-700">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            
+            <div id="instructions-container" class="space-y-2 max-h-64 overflow-y-auto">
+                <!-- Instructions will be displayed here -->
+            </div>
+        </div>
+
+        <!-- Subject Selection -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="mb-6">
+                <h3 class="text-2xl font-bold text-gray-900 mb-2">Pilih Mata Kuliah</h3>
+                <p class="text-gray-600">Pilih mata kuliah untuk absensi hari ini</p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 gap-6 items-center">
+                <div>
+                    <label for="subject-select" class="block text-sm font-medium text-gray-700 mb-3">
+                        Mata Kuliah
+                    </label>
+                    <select id="subject-select" name="subject" disabled class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent transition duration-200 text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed">
+                        <option value="">-- ESP32 harus online untuk melanjutkan --</option>
+                        <option value="bahasa-indonesia">Bahasa Indonesia</option>
+                        <option value="data-warehouse-bi">Data Warehouse Business Intelligence</option>
+                        <option value="integrasi-aplikasi-enterprise">Integrasi Aplikasi Enterprise</option>
+                        <option value="keamanan-sistem-informasi">Keamanan Sistem Informasi</option>
+                        <option value="kewarganegaraan">Kewarganegaraan</option>
+                        <option value="pancasila">Pancasila</option>
+                        <option value="proyek-perangkat-lunak">Proyek Perangkat Lunak</option>
+                        <option value="tata-kelola-management-ti">Tata Kelola Management Teknologi Informasi</option>
+                    </select>
+                </div>
+                
+                <div class="text-center md:text-left">
+                    <div id="subject-info" class="inline-flex items-center space-x-2 px-4 py-2 bg-red-50 rounded-lg border border-red-200">
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                        <span class="text-red-800 text-sm font-medium">ESP32 offline - Tidak dapat memilih mata kuliah</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="grid lg:grid-cols-2 gap-8">
+            <!-- Fingerprint Scanner -->
+            <div class="bg-white rounded-xl shadow-lg p-8 text-center">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Manual Fingerprint Scanner</h3>
+                    <p class="text-gray-600">Klik tombol scan untuk melakukan absensi</p>
+                </div>
+                
+                <div class="relative mb-8">
+                    <div id="scanner-circle" class="w-40 h-40 mx-auto bg-gray-400 rounded-full flex items-center justify-center animate-scan-offline">
+                        <svg class="w-20 h-20 text-white opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
+                        </svg>
+                    </div>
+                    <div id="scanner-ring" class="absolute inset-0 rounded-full border-4 border-gray-300"></div>
+                </div>
+
+                <div class="space-y-4">
+                    <div id="scanner-offline" class="flex items-center justify-center space-x-2 text-red-600">
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <span class="font-medium">Scanner Offline</span>
+                    </div>
+                    
+                    <div id="scanner-ready" class="hidden flex items-center justify-center space-x-2 text-green-600">
+                        <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span class="font-medium">Scanner Ready - Manual Mode</span>
+                    </div>
+                    
+                    <div id="scanner-waiting" class="hidden flex items-center justify-center space-x-2 text-yellow-600">
+                        <div class="w-3 h-3 bg-yellow-500 rounded-full animate-pulse"></div>
+                        <span class="font-medium">Pilih mata kuliah terlebih dahulu</span>
+                    </div>
+                    
+                    <p class="text-sm text-gray-500">
+                        Manual scan - Klik tombol untuk melakukan scan
+                    </p>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="scanner-status" class="mt-6 p-4 rounded-lg bg-red-50 border border-red-200">
+                    <p class="text-red-800 font-medium">Scanner tidak tersedia - ESP32 offline</p>
+                </div>
+
+                <!-- Manual Scan Button -->
+                <button id="manual-scan-btn" class="hidden mt-6 w-full bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white py-4 px-6 rounded-lg font-semibold text-lg transition duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    <svg class="w-6 h-6 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
+                    </svg>
+                    Scan Fingerprint Sekarang
+                </button>
+
+                <!-- Quick Scan Instructions -->
+                <div id="scan-instructions" class="mt-4 text-xs text-gray-500 space-y-1 hidden">
+                    <p>🔍 Mode Manual Scan</p>
+                    <p>👆 Letakkan jari pada sensor saat scan dimulai</p>
+                    <p>⏱️ Tunggu hingga proses selesai</p>
+                </div>
+            </div>
+
+            <!-- Attendance Information -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <div class="mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900 mb-2">Informasi Absensi</h3>
+                    <p class="text-gray-600">Detail informasi absensi hari ini</p>
+                </div>
+
+                <div class="space-y-6">
+                    <!-- Current Session Info -->
+                    <div class="p-4 bg-gray-50 rounded-lg">
+                        <h4 class="font-semibold text-gray-900 mb-3">Sesi Saat Ini</h4>
+                        <div class="space-y-2 text-sm text-gray-600">
+                            <div class="flex justify-between">
+                                <span>Tanggal:</span>
+                                <span id="current-date" class="font-medium"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Waktu:</span>
+                                <span id="current-time" class="font-medium"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>ESP32 Status:</span>
+                                <span id="esp32-status-text" class="text-red-600 font-medium">Offline</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Mata Kuliah:</span>
+                                <span id="selected-subject" class="font-medium text-gray-600">Belum tersedia</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Mode Scanner:</span>
+                                <span class="text-purple-600 font-medium">Manual</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Attendance Stats Today -->
+                    <div class="p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-lg border border-purple-200">
+                        <h4 class="font-semibold text-gray-900 mb-3">Statistik Hari Ini</h4>
+                        <div class="grid grid-cols-2 gap-4 text-center">
+                            <div>
+                                <div class="text-2xl font-bold text-purple-600" id="total-attendance-today">0</div>
+                                <div class="text-xs text-gray-600">Total Absensi</div>
+                            </div>
+                            <div>
+                                <div class="text-2xl font-bold text-blue-600" id="unique-students-today">0</div>
+                                <div class="text-xs text-gray-600">Mahasiswa Unik</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Instructions -->
+                    <div class="p-4 bg-red-50 rounded-lg border border-red-200">
+                        <h4 class="font-semibold text-red-900 mb-2">Status Sistem</h4>
+                        <div id="system-instructions" class="text-sm text-red-800 space-y-1">
+                            <div>❌ ESP32 tidak terdeteksi</div>
+                            <div>📶 Periksa koneksi WiFi ESP32</div>
+                            <div>🔄 Restart ESP32 jika diperlukan</div>
+                            <div>⚠️ Scanner tidak dapat digunakan</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Attendance -->
+        <div class="mt-12 bg-white rounded-xl shadow-lg p-8">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Absensi Terbaru</h3>
+                <div class="flex items-center space-x-2 text-sm text-gray-500">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    <span>Auto-refresh setiap 5 detik</span>
+                </div>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mata Kuliah</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recent-attendance" class="bg-white divide-y divide-gray-200">
+                        <tr>
+                            <td colspan="3" class="px-6 py-4 text-center text-gray-500">Memuat data...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 transform transition-all">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Absensi Berhasil!</h3>
+                <p id="success-message" class="text-gray-600 mb-6"></p>
+                <button onclick="closeModal()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition duration-300">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4 transform transition-all">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Absensi Gagal!</h3>
+                <p id="error-message" class="text-gray-600 mb-6"></p>
+                <button onclick="closeModal()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition duration-300">
+                    Coba Lagi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedSubject = '';
+        let esp32Online = false;
+
+        // WebSocket connection
+        let websocket = null;
+        let esp32IP = '192.168.89.42';
+
+        // FUNGSI BARU: Initialize WebSocket connection
+        async function initWebSocket() {
+            try {
+                const response = await fetch('/api/esp32-status');
+                const data = await response.json();
+                
+                if (data.status === 'online') {
+                    // Extract IP from Flask's ESP32_IP setting or use a default
+                    esp32IP = '192.168.89.42'; // Update this to match your ESP32 IP
+                    const wsPort = data.websocket_port || 81;
+                    
+                    websocket = new WebSocket(`ws://${esp32IP}:${wsPort}`);
+                    
+                    websocket.onopen = function(event) {
+                        console.log('WebSocket connected');
+                        updateWebSocketStatus(true);
+                    };
+                    
+                    websocket.onmessage = function(event) {
+                        const data = JSON.parse(event.data);
+                        displayInstruction(data);
+                    };
+                    
+                    websocket.onclose = function(event) {
+                        console.log('WebSocket disconnected');
+                        updateWebSocketStatus(false);
+                        
+                        // Attempt to reconnect after 3 seconds
+                        setTimeout(initWebSocket, 3000);
+                    };
+                    
+                    websocket.onerror = function(error) {
+                        console.error('WebSocket error:', error);
+                        updateWebSocketStatus(false);
+                    };
+                }
+            } catch (error) {
+                console.error('Failed to initialize WebSocket:', error);
+                updateWebSocketStatus(false);
+            }
+        }
+
+        // FUNGSI BARU: Update WebSocket status in UI
+        function updateWebSocketStatus(connected) {
+            const statusDiv = document.getElementById('websocket-status');
+            const connectionStatus = document.getElementById('ws-connection-status');
+            
+            if (connected) {
+                statusDiv.innerHTML = `
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-green-600">Connected</span>
+                `;
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'font-mono text-xs text-green-600';
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span class="text-red-600">Disconnected</span>
+                `;
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'font-mono text-xs text-red-600';
+            }
+        }
+
+        // Tambahkan ini di bagian JavaScript untuk menghindari duplikasi di sisi client juga
+        let lastReceivedMessage = "";
+        let lastReceivedTime = 0;
+        const MESSAGE_DEDUP_TIMEOUT = 1000; // 1 second
+
+        // FUNGSI DIPERBAIKI: Display real-time instruction dengan deduplication
+        function displayInstruction(data) {
+            // Check for duplicate message
+            const messageKey = data.type + ":" + data.message;
+            const now = Date.now();
+            
+            if (messageKey === lastReceivedMessage && (now - lastReceivedTime) < MESSAGE_DEDUP_TIMEOUT) {
+                return; // Skip duplicate
+            }
+            
+            lastReceivedMessage = messageKey;
+            lastReceivedTime = now;
+            
+            const panel = document.getElementById('instructions-panel');
+            const container = document.getElementById('instructions-container');
+            
+            // Show panel if hidden
+            if (panel && panel.classList.contains('hidden')) {
+                panel.classList.remove('hidden');
+            }
+            
+            // Create instruction element
+            const instructionDiv = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let bgColor = 'bg-gray-50';
+            let textColor = 'text-gray-800';
+            let iconColor = 'text-gray-600';
+            
+            switch(data.status) {
+                case 'success':
+                    bgColor = 'bg-green-50 border-l-4 border-green-400';
+                    textColor = 'text-green-800';
+                    iconColor = 'text-green-600';
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-50 border-l-4 border-red-400';
+                    textColor = 'text-red-800';
+                    iconColor = 'text-red-600';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-50 border-l-4 border-yellow-400';
+                    textColor = 'text-yellow-800';
+                    iconColor = 'text-yellow-600';
+                    break;
+                case 'info':
+                    bgColor = 'bg-blue-50 border-l-4 border-blue-400';
+                    textColor = 'text-blue-800';
+                    iconColor = 'text-blue-600';
+                    break;
+            }
+            
+            instructionDiv.innerHTML = `
+                <div class="flex items-start space-x-3 p-3 rounded-lg ${bgColor}">
+                    <div class="flex-shrink-0">
+                        <svg class="w-5 h-5 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="${textColor} font-medium">${data.message}</p>
+                        <p class="text-xs text-gray-500 mt-1">${timestamp} - ${data.type}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Add to top of container
+            if (container) {
+                container.insertBefore(instructionDiv, container.firstChild);
+                
+                // Limit to 15 instructions (reduced from 20)
+                while (container.children.length > 15) {
+                    container.removeChild(container.lastChild);
+                }
+                
+                // Auto scroll to top
+                container.scrollTop = 0;
+            }
+        }
+
+        // FUNGSI BARU: Clear instructions
+        function clearInstructions() {
+            const container = document.getElementById('instructions-container');
+            const panel = document.getElementById('instructions-panel');
+            
+            container.innerHTML = '';
+            panel.classList.add('hidden');
+        }
+
+        
+        // Update current date and time
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('current-date').textContent = now.toLocaleDateString('id-ID');
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('id-ID');
+        }
+
+        // Check ESP32 connection status
+        async function checkESP32Connection() {
+            try {
+                const response = await fetch('/api/esp32-status', { timeout: 5000 });
+                const data = await response.json();
+                
+                if (data.status === 'online') {
+                    esp32Online = true;
+                    updateESP32Status(true, data);
+                } else {
+                    esp32Online = false;
+                    updateESP32Status(false, data);
+                }
+            } catch (error) {
+                console.error('ESP32 connection check failed:', error);
+                esp32Online = false;
+                updateESP32Status(false, { error: 'Connection timeout' });
+            }
+        }
+
+        // Update ESP32 status UI
+        function updateESP32Status(online, data = {}) {
+            const statusDiv = document.getElementById('esp32-connection-status');
+            const navStatus = document.getElementById('nav-status');
+            const esp32StatusText = document.getElementById('esp32-status-text');
+            const subjectSelect = document.getElementById('subject-select');
+            const subjectInfo = document.getElementById('subject-info');
+            
+            if (online) {
+                // Update connection status
+                statusDiv.innerHTML = `
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                            <div>
+                                <p class="text-green-800 font-medium">ESP32 Online</p>
+                                <p class="text-sm text-green-600">Sensor: ${data.sensor || 'Connected'} | Templates: ${data.templates || 0}/${data.capacity || 0}</p>
+                            </div>
+                        </div>
+
+                    </div>
+                `;
+                statusDiv.className = 'mt-4 p-4 bg-green-50 border border-green-200 rounded-lg';
+                
+                // Update nav status
+                navStatus.innerHTML = `
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>Online</span>
+                `;
+                
+                esp32StatusText.textContent = 'Online';
+                esp32StatusText.className = 'text-green-600 font-medium';
+                
+                // Enable subject selection
+                subjectSelect.disabled = false;
+                subjectSelect.innerHTML = `
+                    <option value="">-- Pilih Mata Kuliah --</option>
+                    <option value="bahasa-indonesia">Bahasa Indonesia</option>
+                    <option value="data-warehouse-bi">Data Warehouse Business Intelligence</option>
+                    <option value="integrasi-aplikasi-enterprise">Integrasi Aplikasi Enterprise</option>
+                    <option value="keamanan-sistem-informasi">Keamanan Sistem Informasi</option>
+                    <option value="kewarganegaraan">Kewarganegaraan</option>
+                    <option value="pancasila">Pancasila</option>
+                    <option value="proyek-perangkat-lunak">Proyek Perangkat Lunak</option>
+                    <option value="tata-kelola-management-ti">Tata Kelola Management Teknologi Informasi</option>
+                `;
+                
+                subjectInfo.innerHTML = `
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-blue-800 text-sm font-medium">ESP32 online - Pilih mata kuliah untuk melanjutkan</span>
+                `;
+                subjectInfo.className = 'inline-flex items-center space-x-2 px-4 py-2 bg-blue-50 rounded-lg border border-blue-200';
+                
+                updateScannerStatus('waiting');
+                updateSystemInstructions(true);
+                
+            } else {
+                // Update connection status
+                statusDiv.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <div>
+                            <p class="text-red-800 font-medium">ESP32 Offline</p>
+                            <p class="text-sm text-red-600">${data.error || 'Cannot connect to ESP32'}</p>
+                        </div>
+                    </div>
+                `;
+                statusDiv.className = 'mt-4 p-4 bg-red-50 border border-red-200 rounded-lg';
+                
+                // Update nav status
+                navStatus.innerHTML = `
+                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span>Offline</span>
+                `;
+                
+                esp32StatusText.textContent = 'Offline';
+                esp32StatusText.className = 'text-red-600 font-medium';
+                
+                // Disable subject selection
+                subjectSelect.disabled = true;
+                subjectSelect.innerHTML = '<option value="">-- ESP32 harus online untuk melanjutkan --</option>';
+                subjectSelect.value = '';
+                selectedSubject = '';
+                
+                subjectInfo.innerHTML = `
+                    <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                    <span class="text-red-800 text-sm font-medium">ESP32 offline - Tidak dapat memilih mata kuliah</span>
+                `;
+                subjectInfo.className = 'inline-flex items-center space-x-2 px-4 py-2 bg-red-50 rounded-lg border border-red-200';
+                
+                updateScannerStatus('offline');
+                updateSystemInstructions(false);
+                document.getElementById('selected-subject').textContent = 'Belum tersedia';
+            }
+        }
+
+        // Update scanner visual status
+        function updateScannerStatus(status) {
+            const scannerCircle = document.getElementById('scanner-circle');
+            const scannerRing = document.getElementById('scanner-ring');
+            const scannerOffline = document.getElementById('scanner-offline');
+            const scannerReady = document.getElementById('scanner-ready');
+            const scannerWaiting = document.getElementById('scanner-waiting');
+            const scannerStatusDiv = document.getElementById('scanner-status');
+            const manualScanBtn = document.getElementById('manual-scan-btn');
+            const scanInstructions = document.getElementById('scan-instructions');
+            
+            // Hide all status indicators first
+            scannerOffline.classList.add('hidden');
+            scannerReady.classList.add('hidden');
+            scannerWaiting.classList.add('hidden');
+            
+            switch(status) {
+                case 'offline':
+                    scannerCircle.className = 'w-40 h-40 mx-auto bg-gray-400 rounded-full flex items-center justify-center animate-scan-offline';
+                    scannerRing.className = 'absolute inset-0 rounded-full border-4 border-gray-300';
+                    scannerOffline.classList.remove('hidden');
+                    scannerStatusDiv.innerHTML = '<p class="text-red-800 font-medium">Scanner tidak tersedia - ESP32 offline</p>';
+                    scannerStatusDiv.className = 'mt-6 p-4 rounded-lg bg-red-50 border border-red-200';
+                    manualScanBtn.classList.add('hidden');
+                    scanInstructions.classList.add('hidden');
+                    break;
+                    
+                case 'waiting':
+                    scannerCircle.className = 'w-40 h-40 mx-auto bg-yellow-400 rounded-full flex items-center justify-center animate-scan-offline';
+                    scannerRing.className = 'absolute inset-0 rounded-full border-4 border-yellow-300';
+                    scannerWaiting.classList.remove('hidden');
+                    scannerStatusDiv.innerHTML = '<p class="text-yellow-800 font-medium">ESP32 online - Pilih mata kuliah untuk melanjutkan</p>';
+                    scannerStatusDiv.className = 'mt-6 p-4 rounded-lg bg-yellow-50 border border-yellow-200';
+                    manualScanBtn.classList.add('hidden');
+                    scanInstructions.classList.add('hidden');
+                    break;
+                    
+                case 'ready':
+                    scannerCircle.className = 'w-40 h-40 mx-auto bg-gradient-to-br from-purple-600 to-purple-800 rounded-full flex items-center justify-center animate-scan';
+                    scannerRing.className = 'absolute inset-0 rounded-full border-4 border-purple-300 animate-pulse-slow';
+                    scannerReady.classList.remove('hidden');
+                    const subjectText = document.getElementById('subject-select').options[document.getElementById('subject-select').selectedIndex].text;
+                    scannerStatusDiv.innerHTML = `<p class="text-green-800 font-medium">Scanner siap untuk mata kuliah: ${subjectText}</p>`;
+                    scannerStatusDiv.className = 'mt-6 p-4 rounded-lg bg-green-50 border border-green-200';
+                    manualScanBtn.classList.remove('hidden');
+                    manualScanBtn.disabled = false;
+                    scanInstructions.classList.remove('hidden');
+                    
+                    // Add click handler for manual scan
+                    manualScanBtn.onclick = performManualScan;
+                    break;
+            }
+        }
+
+        // Perform manual scan
+        async function performManualScan() {
+            if (!selectedSubject) {
+                showError('Mohon pilih mata kuliah terlebih dahulu');
+                return;
+            }
+
+            const manualScanBtn = document.getElementById('manual-scan-btn');
+            const originalText = manualScanBtn.innerHTML;
+            
+            // Show loading state
+            manualScanBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-6 w-6 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Scanning... Letakkan jari pada sensor
+            `;
+            manualScanBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/scan-once', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `subject=${encodeURIComponent(selectedSubject)}`
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const subjectText = document.getElementById('subject-select').options[document.getElementById('subject-select').selectedIndex].text;
+                    const userName = result.user_name || 'User tidak terdaftar';
+                    showSuccess(`Absensi berhasil!\nNama: ${userName}\nMata Kuliah: ${subjectText}`);
+                    loadRecentAttendance();
+                    loadTodayStats();
+                } else {
+                    showError(result.message || 'Gagal melakukan scan');
+                }
+            } catch (error) {
+                console.error('Manual scan error:', error);
+                showError('Terjadi kesalahan saat melakukan scan');
+            } finally {
+                manualScanBtn.innerHTML = originalText;
+                manualScanBtn.disabled = false;
+            }
+        }
+
+        // Update system instructions
+        function updateSystemInstructions(online) {
+            const instructionsDiv = document.getElementById('system-instructions');
+            
+            if (online) {
+                instructionsDiv.innerHTML = `
+                    <div>✅ ESP32 terhubung dan online</div>
+                    <div>📡 Scanner fingerprint siap digunakan</div>
+                    <div>📚 Pilih mata kuliah untuk memulai</div>
+                    <div>🖱️ Klik tombol scan untuk melakukan absensi</div>
+                `;
+                instructionsDiv.parentElement.className = 'p-4 bg-blue-50 rounded-lg border border-blue-200';
+                instructionsDiv.parentElement.querySelector('h4').textContent = 'Petunjuk Penggunaan';
+                instructionsDiv.parentElement.querySelector('h4').className = 'font-semibold text-blue-900 mb-2';
+            } else {
+                instructionsDiv.innerHTML = `
+                    <div>❌ ESP32 tidak terdeteksi</div>
+                    <div>📶 Periksa koneksi WiFi ESP32</div>
+                    <div>🔄 Restart ESP32 jika diperlukan</div>
+                    <div>⚠️ Scanner tidak dapat digunakan</div>
+                `;
+                instructionsDiv.parentElement.className = 'p-4 bg-red-50 rounded-lg border border-red-200';
+                instructionsDiv.parentElement.querySelector('h4').textContent = 'Status Sistem';
+                instructionsDiv.parentElement.querySelector('h4').className = 'font-semibold text-red-900 mb-2';
+            }
+        }
+
+        // Handle subject selection
+        document.getElementById('subject-select').addEventListener('change', function() {
+            selectedSubject = this.value;
+            const selectedText = this.options[this.selectedIndex].text;
+            
+            if (selectedSubject && esp32Online) {
+                document.getElementById('selected-subject').textContent = selectedText;
+                updateScannerStatus('ready');
+            } else if (esp32Online) {
+                document.getElementById('selected-subject').textContent = 'Belum dipilih';
+                updateScannerStatus('waiting');
+            }
+        });
+
+        // Show success modal
+        function showSuccess(message) {
+            document.getElementById('success-message').innerHTML = message.replace(/\n/g, '<br>');
+            document.getElementById('success-modal').classList.remove('hidden');
+            document.getElementById('success-modal').classList.add('flex');
+        }
+
+        // Show error modal
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-modal').classList.remove('hidden');
+            document.getElementById('error-modal').classList.add('flex');
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+            document.getElementById('success-modal').classList.remove('flex');
+            document.getElementById('error-modal').classList.add('hidden');
+            document.getElementById('error-modal').classList.remove('flex');
+        }
+
+        // Load today's attendance statistics
+        async function loadTodayStats() {
+            try {
+                const response = await fetch('/api/today-stats');
+                const data = await response.json();
+                
+                document.getElementById('total-attendance-today').textContent = data.total_attendance || 0;
+                document.getElementById('unique-students-today').textContent = data.unique_students || 0;
+            } catch (error) {
+                console.error('Error loading today stats:', error);
+            }
+        }
+
+        // Load recent attendance data
+        async function loadRecentAttendance() {
+            try {
+                const response = await fetch('/api/recent-attendance');
+                const data = await response.json();
+                
+                const tbody = document.getElementById('recent-attendance');
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="3" class="px-6 py-4 text-center text-gray-500">Belum ada data absensi hari ini</td></tr>';
+                } else {
+                    tbody.innerHTML = data.map(row => `
+                        <tr class="hover:bg-gray-50">
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">${row.timestamp}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                ${row.name || '<span class="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">Belum Terdaftar</span>'}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">${row.subject || 'Tidak diketahui'}</span>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Error loading recent attendance:', error);
+                document.getElementById('recent-attendance').innerHTML = 
+                    '<tr><td colspan="3" class="px-6 py-4 text-center text-red-500">Error memuat data</td></tr>';
+            }
+        }
+
+        // Initialize
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+        
+        // Check ESP32 connection immediately and then every 10 seconds
+        checkESP32Connection();
+        setInterval(checkESP32Connection, 10000);
+        
+        loadRecentAttendance();
+        loadTodayStats();
+        
+        // Auto-refresh recent attendance every 5 seconds
+        setInterval(loadRecentAttendance, 5000);
+        setInterval(loadTodayStats, 10000);
+    </script>
+</body>
+</html>

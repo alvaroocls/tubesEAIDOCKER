@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Campus Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-in',
+                        'slide-up': 'slideUp 0.5s ease-out',
+                        'bounce-in': 'bounceIn 0.6s ease-out',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' }
+                        },
+                        slideUp: {
+                            '0%': { transform: 'translateY(20px)', opacity: '0' },
+                            '100%': { transform: 'translateY(0)', opacity: '1' }
+                        },
+                        bounceIn: {
+                            '0%': { transform: 'scale(0.3)', opacity: '0' },
+                            '50%': { transform: 'scale(1.05)' },
+                            '70%': { transform: 'scale(0.9)' },
+                            '100%': { transform: 'scale(1)', opacity: '1' }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-blue-600 to-blue-800 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="text-xl font-bold text-gray-800">Dashboard Absensi</span>
+                        <div class="text-xs text-gray-500">Real-time Monitoring</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2 text-sm text-gray-600">
+                        <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span id="status">Live</span>
+                    </div>
+                    <div class="text-sm text-gray-500" id="last-update">
+                        Last update: <span id="update-time">Loading...</span>
+                    </div>
+                    <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                        Kembali ke Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <!-- Page Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-900 mb-2">Dashboard Monitoring Absensi</h1>
+            <p class="text-gray-600">Pantau data kehadiran real-time dan statistik harian</p>
+        </div>
+
+        <!-- Stats Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <!-- Total Hadir Hari Ini -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-slide-up">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-blue-100 mr-4">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.5 2.5 0 11-5 0 2.5 2.5 0 015 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total Hadir Hari Ini</p>
+                        <p class="text-3xl font-bold text-blue-600" id="total-today">{{ stats.total_today }}</p>
+                        <p class="text-xs text-gray-500">orang</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Terdaftar -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-slide-up" style="animation-delay: 0.1s">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-green-100 mr-4">
+                        <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">User Terdaftar Hadir</p>
+                        <p class="text-3xl font-bold text-green-600" id="registered-today">{{ stats.registered_today }}</p>
+                        <p class="text-xs text-gray-500">orang</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Belum Terdaftar -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-slide-up" style="animation-delay: 0.2s">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-yellow-100 mr-4">
+                        <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Belum Terdaftar</p>
+                        <p class="text-3xl font-bold text-yellow-600" id="unregistered-today">{{ stats.unregistered_today }}</p>
+                        <p class="text-xs text-gray-500">fingerprint</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Total User Sistem -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 animate-slide-up" style="animation-delay: 0.3s">
+                <div class="flex items-center">
+                    <div class="p-3 rounded-full bg-purple-100 mr-4">
+                        <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 mb-1">Total User Terdaftar</p>
+                        <p class="text-3xl font-bold text-purple-600" id="total-users">{{ stats.total_registered_users }}</p>
+                        <p class="text-xs text-gray-500">user</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Weekly Attendance Chart -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Grafik Mingguan (7 Hari Terakhir)</h3>
+                <canvas id="weeklyChart" width="400" height="200"></canvas>
+            </div>
+
+            <!-- Subject Distribution Chart -->
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <h3 class="text-lg font-semibold text-gray-900 mb-4">Distribusi Mata Kuliah Hari Ini</h3>
+                <canvas id="subjectChart" width="400" height="200"></canvas>
+            </div>
+        </div>
+
+        <!-- Data Tables Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <!-- Recent Attendance -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Absensi Terbaru</h3>
+                    <p class="text-sm text-gray-600">10 data absensi terakhir</p>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full divide-y divide-gray-200">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nama</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Fingerprint ID</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mata Kuliah</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Waktu</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-gray-200" id="recent-attendance">
+                            {% for row in recent_data %}
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if row[1] %}
+                                    <div class="text-sm text-gray-900">{{ row[1] }}</div>
+                                    {% else %}
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                                        Belum Terdaftar
+                                    </span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ row[2] }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    {% if row[4] %}
+                                    <span class="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">{{ row[4] }}</span>
+                                    {% else %}
+                                    <span class="px-2 py-1 text-xs bg-gray-100 text-gray-800 rounded-full">Tidak diketahui</span>
+                                    {% endif %}
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ row[3] }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Subject Statistics Today -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200">
+                <div class="p-6 border-b border-gray-200">
+                    <h3 class="text-lg font-semibold text-gray-900">Statistik Mata Kuliah Hari Ini</h3>
+                    <p class="text-sm text-gray-600">Jumlah absensi per mata kuliah</p>
+                </div>
+                <div class="p-6">
+                    {% if subject_stats %}
+                    {% for subject in subject_stats %}
+                    <div class="flex items-center justify-between py-3 {% if not loop.last %}border-b border-gray-100{% endif %}">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-8 h-8 bg-gradient-to-r from-green-500 to-teal-600 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                                {{ loop.index }}
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900">{{ subject[0] }}</p>
+                            </div>
+                        </div>
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            {{ subject[1] }} absensi
+                        </span>
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p class="text-center text-gray-500 py-8">Belum ada data mata kuliah hari ini</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="mt-8 flex justify-center space-x-4">
+            <a href="/attendance" class="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg transition duration-300 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
+                </svg>
+                Lakukan Absensi
+            </a>
+            <a href="/register" class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg transition duration-300 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                </svg>
+                Registrasi User Baru
+            </a>
+            <button onclick="refreshData()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg transition duration-300 flex items-center">
+                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                </svg>
+                Refresh Data
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize charts data
+        const weeklyData = {{ weekly_data|safe }};
+        const subjectData = {{ subject_stats }};
+
+        // Weekly Chart
+        const weeklyCtx = document.getElementById('weeklyChart').getContext('2d');
+        const weeklyChart = new Chart(weeklyCtx, {
+            type: 'line',
+            data: {
+                labels: weeklyData.map(d => d.day),
+                datasets: [{
+                    label: 'Jumlah Absensi',
+                    data: weeklyData.map(d => d.count),
+                    borderColor: 'rgb(59, 130, 246)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    tension: 0.1,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                }
+            }
+        });
+
+        // Subject Distribution Chart
+        const subjectCtx = document.getElementById('subjectChart').getContext('2d');
+        const subjectChart = new Chart(subjectCtx, {
+            type: 'doughnut',
+            data: {
+                labels: subjectData.map(d => d[0]),
+                datasets: [{
+                    data: subjectData.map(d => d[1]),
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(251, 191, 36, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(20, 184, 166, 0.8)',
+                        'rgba(249, 115, 22, 0.8)',
+                        'rgba(139, 92, 246, 0.8)'
+                    ],
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            usePointStyle: true,
+                            padding: 20,
+                            font: {
+                                size: 11
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        // Auto refresh function
+        async function refreshData() {
+            try {
+                const response = await fetch('/api/dashboard-data');
+                const data = await response.json();
+                
+                // Update stats
+                document.getElementById('total-today').textContent = data.total_today;
+                document.getElementById('registered-today').textContent = data.registered_today;
+                document.getElementById('unregistered-today').textContent = data.unregistered_today;
+                document.getElementById('total-users').textContent = data.total_registered_users;
+                
+                // Update timestamp
+                document.getElementById('update-time').textContent = new Date().toLocaleTimeString();
+                
+                // Show success animation
+                document.querySelectorAll('[id$="-today"], #total-users').forEach(el => {
+                    el.classList.add('animate-bounce-in');
+                    setTimeout(() => el.classList.remove('animate-bounce-in'), 600);
+                });
+                
+            } catch (error) {
+                console.error('Error refreshing data:', error);
+                document.getElementById('status').textContent = 'Error';
+                document.querySelector('.bg-green-500').classList.replace('bg-green-500', 'bg-red-500');
+            }
+        }
+
+        // Set update time on load
+        document.getElementById('update-time').textContent = new Date().toLocaleTimeString();
+
+        // Auto refresh every 30 seconds
+        setInterval(refreshData, 30000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  mysql:
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+
+  flask_app:
+    environment:
+      - MYSQL_HOST=mysql
+      - MYSQL_PORT=3306
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - ESP32_IP=${ESP32_IP}
+
+  # phpMyAdmin untuk manage database (opsional)
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: attendance_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: attendance123
+    depends_on:
+      - mysql
+    networks:
+      - attendance_network
+
+# Define volumes untuk persistent data
+volumes:
+  mysql_data:
+
+# Define network untuk komunikasi antar container
+networks:
+  attendance_network:
+    driver: bridge

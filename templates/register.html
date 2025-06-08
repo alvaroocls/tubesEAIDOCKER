@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrasi User - Campus Attendance System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-green-50 to-blue-50 min-h-screen">
+    <!-- Navigation -->
+    <nav class="bg-white shadow-lg border-b border-gray-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center py-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gradient-to-r from-green-600 to-green-800 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <span class="text-xl font-bold text-gray-800">Registrasi User</span>
+                        <div class="text-xs text-gray-500">Fingerprint Registration</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-4">
+                    <div id="websocket-status" class="flex items-center space-x-2 text-sm">
+                        <div class="w-2 h-2 bg-gray-500 rounded-full"></div>
+                        <span class="text-gray-600">Connecting...</span>
+                    </div>
+                    <a href="/" class="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                        Kembali ke Home
+                    </a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <!-- Header -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-bold text-gray-900 mb-4">Registrasi User Baru</h1>
+            <p class="text-lg text-gray-600 max-w-2xl mx-auto">
+                Daftarkan fingerprint untuk user baru ke dalam sistem absensi
+            </p>
+        </div>
+
+        <!-- ESP32 Status Check -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <h3 class="text-2xl font-bold text-gray-900">Status ESP32</h3>
+                <div class="flex items-center space-x-3">
+                    <button onclick="checkESP32Status()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                        <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                        </svg>
+                        Refresh Status
+                    </button>
+                    <button onclick="clearSystem()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                        <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        Clear System
+                    </button>
+                </div>
+            </div>
+            
+            <div id="esp32-status" class="p-4 bg-gray-50 rounded-lg">
+                <p class="text-gray-600">Checking ESP32 connection...</p>
+            </div>
+        </div>
+
+        <!-- LAYOUT BARU: Side by Side - Registration Form dan Real-time Instructions -->
+        <div class="grid lg:grid-cols-2 gap-8 mb-8">
+            <!-- Registration Form -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <h3 class="text-2xl font-bold text-gray-900 mb-6">Form Registrasi</h3>
+                
+                <form id="registration-form" class="space-y-6">
+                    <div>
+                        <label for="user-name" class="block text-sm font-medium text-gray-700 mb-3">
+                            Nama User
+                        </label>
+                        <input type="text" id="user-name" name="name" required
+                               class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+                               placeholder="Masukkan nama lengkap user">
+                    </div>
+
+                    <div class="pt-4">
+                        <div class="text-sm text-gray-600 mb-4">
+                            <p>📝 Pastikan ESP32 dalam status "online"</p>
+                            <p>👆 Siapkan jari yang akan didaftarkan</p>
+                            <p>🔗 WebSocket: <span id="ws-connection-status" class="font-mono text-xs">Disconnected</span></p>
+                        </div>
+                        
+                        <button type="submit" id="register-btn" 
+                                class="w-full bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white px-8 py-3 rounded-lg font-semibold transition duration-300 transform hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed">
+                            <svg class="w-5 h-5 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path>
+                            </svg>
+                            Mulai Registrasi Fingerprint
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Real-time Instructions Display - SELALU TERLIHAT -->
+            <div class="bg-white rounded-xl shadow-lg p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h3 class="text-2xl font-bold text-gray-900">Instruksi Real-time</h3>
+                    <button onclick="clearInstructions()" class="text-gray-500 hover:text-gray-700 transition duration-300">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Default Message -->
+                <div id="default-message" class="text-center py-12">
+                    <div class="w-16 h-16 mx-auto mb-4 bg-blue-100 rounded-full flex items-center justify-center">
+                        <svg class="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                    </div>
+                    <h4 class="text-lg font-medium text-gray-900 mb-2">Menunggu Instruksi</h4>
+                    <p class="text-gray-600">Instruksi registrasi akan muncul di sini ketika proses dimulai</p>
+                </div>
+                
+                <!-- Instructions Container -->
+                <div id="instructions-container" class="space-y-3 max-h-96 overflow-y-auto">
+                    <!-- Real-time instructions will appear here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAMBAHAN BARU: List User Terdaftar -->
+        <div class="bg-white rounded-xl shadow-lg p-8 mb-8">
+            <div class="flex items-center justify-between mb-6">
+                <div>
+                    <h3 class="text-2xl font-bold text-gray-900">User Terdaftar</h3>
+                    <p class="text-gray-600">Daftar semua user yang telah terdaftar dalam sistem</p>
+                </div>
+                <button onclick="loadRegisteredUsers()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition duration-300">
+                    <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                    </svg>
+                    Refresh List
+                </button>
+            </div>
+
+            <!-- User Statistics -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-blue-100 rounded-lg mr-3">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.196-2.121M9 6a3 3 0 106 0 3 3 0 00-6 0zM17 20H7a4 4 0 01-4-4v-1a2 2 0 012-2h2.5l.5-.5 1-.5"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-blue-600 font-medium">Total User</p>
+                            <p class="text-2xl font-bold text-blue-800" id="total-users">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-lg border border-green-200">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-green-100 rounded-lg mr-3">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-green-600 font-medium">Aktif Hari Ini</p>
+                            <p class="text-2xl font-bold text-green-800" id="active-today">-</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="bg-purple-50 p-4 rounded-lg border border-purple-200">
+                    <div class="flex items-center">
+                        <div class="p-2 bg-purple-100 rounded-lg mr-3">
+                            <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-sm text-purple-600 font-medium">Memori Sensor</p>
+                            <p class="text-2xl font-bold text-purple-800" id="sensor-memory">-</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Users Table -->
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Fingerprint ID
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Nama User
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Tanggal Daftar
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Status
+                            </th>
+                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Aksi
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody id="users-table-body" class="bg-white divide-y divide-gray-200">
+                        <!-- Users will be loaded here -->
+                        <tr>
+                            <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                <div class="flex items-center justify-center">
+                                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Loading users...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="bg-blue-50 rounded-xl border border-blue-200 p-6">
+            <h4 class="font-bold text-blue-900 mb-3">Petunjuk Registrasi:</h4>
+            <ol class="text-blue-800 space-y-2 text-sm">
+                <li>1. Pastikan ESP32 dalam status "online" (hijau)</li>
+                <li>2. Masukkan nama user yang akan didaftarkan</li>
+                <li>3. Klik "Mulai Registrasi Fingerprint"</li>
+                <li>4. Ikuti instruksi real-time yang muncul di panel sebelah kanan</li>
+                <li>5. Letakkan jari pada sensor saat diminta</li>
+                <li>6. Tunggu konfirmasi registrasi berhasil</li>
+            </ol>
+        </div>
+    </div>
+
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-green-100 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Operasi Berhasil!</h3>
+                <p id="success-message" class="text-gray-600 mb-6"></p>
+                <button onclick="closeModal()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg transition duration-300">
+                    OK
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Modal -->
+    <div id="error-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Operasi Gagal!</h3>
+                <p id="error-message" class="text-gray-600 mb-6"></p>
+                <button onclick="closeModal()" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition duration-300">
+                    Coba Lagi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-md w-full mx-4">
+            <div class="text-center">
+                <div class="w-16 h-16 mx-auto mb-4 bg-red-100 rounded-full flex items-center justify-center">
+                    <svg class="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900 mb-2">Konfirmasi Hapus User</h3>
+                <p id="delete-message" class="text-gray-600 mb-6"></p>
+                <div class="flex space-x-3 justify-center">
+                    <button onclick="closeDeleteModal()" class="bg-gray-300 hover:bg-gray-400 text-gray-800 px-6 py-2 rounded-lg transition duration-300">
+                        Batal
+                    </button>
+                    <button id="confirm-delete-btn" class="bg-red-600 hover:bg-red-700 text-white px-6 py-2 rounded-lg transition duration-300">
+                        Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // WebSocket connection
+        let websocket = null;
+        let esp32IP = '192.168.89.42';
+
+        // FUNGSI BARU: Initialize WebSocket connection
+        async function initWebSocket() {
+            try {
+                const response = await fetch('/api/esp32-status');
+                const data = await response.json();
+                
+                if (data.status === 'online') {
+                    // Extract IP from Flask's ESP32_IP setting or use a default
+                    esp32IP = '192.168.89.42'; // Update this to match your ESP32 IP
+                    const wsPort = data.websocket_port || 81;
+                    
+                    websocket = new WebSocket(`ws://${esp32IP}:${wsPort}`);
+                    
+                    websocket.onopen = function(event) {
+                        console.log('WebSocket connected');
+                        updateWebSocketStatus(true);
+                    };
+                    
+                    websocket.onmessage = function(event) {
+                        const data = JSON.parse(event.data);
+                        displayInstruction(data);
+                    };
+                    
+                    websocket.onclose = function(event) {
+                        console.log('WebSocket disconnected');
+                        updateWebSocketStatus(false);
+                        
+                        // Attempt to reconnect after 3 seconds
+                        setTimeout(initWebSocket, 3000);
+                    };
+                    
+                    websocket.onerror = function(error) {
+                        console.error('WebSocket error:', error);
+                        updateWebSocketStatus(false);
+                    };
+                }
+            } catch (error) {
+                console.error('Failed to initialize WebSocket:', error);
+                updateWebSocketStatus(false);
+            }
+        }
+
+        // FUNGSI BARU: Update WebSocket status in UI
+        function updateWebSocketStatus(connected) {
+            const statusDiv = document.getElementById('websocket-status');
+            const connectionStatus = document.getElementById('ws-connection-status');
+            
+            if (connected) {
+                statusDiv.innerHTML = `
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-green-600">Connected</span>
+                `;
+                connectionStatus.textContent = 'Connected';
+                connectionStatus.className = 'font-mono text-xs text-green-600';
+            } else {
+                statusDiv.innerHTML = `
+                    <div class="w-2 h-2 bg-red-500 rounded-full"></div>
+                    <span class="text-red-600">Disconnected</span>
+                `;
+                connectionStatus.textContent = 'Disconnected';
+                connectionStatus.className = 'font-mono text-xs text-red-600';
+            }
+        }
+
+        // Tambahkan ini di bagian JavaScript untuk menghindari duplikasi di sisi client juga
+        let lastReceivedMessage = "";
+        let lastReceivedTime = 0;
+        const MESSAGE_DEDUP_TIMEOUT = 1000; // 1 second
+
+        // FUNGSI DIPERBAIKI: Display real-time instruction dengan deduplication
+        function displayInstruction(data) {
+            // Check for duplicate message
+            const messageKey = data.type + ":" + data.message;
+            const now = Date.now();
+            
+            if (messageKey === lastReceivedMessage && (now - lastReceivedTime) < MESSAGE_DEDUP_TIMEOUT) {
+                return; // Skip duplicate
+            }
+            
+            lastReceivedMessage = messageKey;
+            lastReceivedTime = now;
+            
+            const container = document.getElementById('instructions-container');
+            const defaultMessage = document.getElementById('default-message');
+            
+            // Hide default message when first instruction comes
+            if (defaultMessage && !defaultMessage.classList.contains('hidden')) {
+                defaultMessage.classList.add('hidden');
+            }
+            
+            // Create instruction element
+            const instructionDiv = document.createElement('div');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            let bgColor = 'bg-gray-50';
+            let textColor = 'text-gray-800';
+            let iconColor = 'text-gray-600';
+            let icon = 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+            
+            switch(data.status) {
+                case 'success':
+                    bgColor = 'bg-green-50 border-l-4 border-green-400';
+                    textColor = 'text-green-800';
+                    iconColor = 'text-green-600';
+                    icon = 'M5 13l4 4L19 7';
+                    break;
+                case 'error':
+                    bgColor = 'bg-red-50 border-l-4 border-red-400';
+                    textColor = 'text-red-800';
+                    iconColor = 'text-red-600';
+                    icon = 'M6 18L18 6M6 6l12 12';
+                    break;
+                case 'warning':
+                    bgColor = 'bg-yellow-50 border-l-4 border-yellow-400';
+                    textColor = 'text-yellow-800';
+                    iconColor = 'text-yellow-600';
+                    icon = 'M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z';
+                    break;
+                case 'info':
+                    bgColor = 'bg-blue-50 border-l-4 border-blue-400';
+                    textColor = 'text-blue-800';
+                    iconColor = 'text-blue-600';
+                    icon = 'M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z';
+                    break;
+            }
+            
+            instructionDiv.innerHTML = `
+                <div class="flex items-start space-x-3 p-3 rounded-lg ${bgColor} animate-fadeIn">
+                    <div class="flex-shrink-0">
+                        <svg class="w-5 h-5 ${iconColor}" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${icon}"></path>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <p class="${textColor} font-medium">${data.message}</p>
+                        <p class="text-xs text-gray-500 mt-1">${timestamp} - ${data.type.toUpperCase()}</p>
+                    </div>
+                </div>
+            `;
+            
+            // Add to top of container
+            if (container) {
+                container.insertBefore(instructionDiv, container.firstChild);
+                
+                // Limit to 15 instructions (reduced from 20)
+                while (container.children.length > 15) {
+                    container.removeChild(container.lastChild);
+                }
+                
+                // Auto scroll to top
+                container.scrollTop = 0;
+            }
+        }
+
+        // FUNGSI BARU: Clear instructions
+        function clearInstructions() {
+            const container = document.getElementById('instructions-container');
+            const defaultMessage = document.getElementById('default-message');
+            
+            container.innerHTML = '';
+            
+            // Show default message again
+            if (defaultMessage) {
+                defaultMessage.classList.remove('hidden');
+            }
+        }
+
+        // FUNGSI BARU: Load registered users
+        async function loadRegisteredUsers() {
+            try {
+                const response = await fetch('/api/registered-users');
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    const tbody = document.getElementById('users-table-body');
+                    const users = data.users;
+                    
+                    // Update statistics
+                    document.getElementById('total-users').textContent = users.length;
+                    document.getElementById('active-today').textContent = data.statistics.active_today || 0;
+                    document.getElementById('sensor-memory').textContent = data.statistics.sensor_memory || '0/127';
+                    
+                    // Clear table
+                    tbody.innerHTML = '';
+                    
+                    if (users.length === 0) {
+                        tbody.innerHTML = `
+                            <tr>
+                                <td colspan="5" class="px-6 py-4 text-center text-gray-500">
+                                    <div class="flex flex-col items-center">
+                                        <svg class="w-12 h-12 text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.196-2.121M9 6a3 3 0 106 0 3 3 0 00-6 0zM17 20H7a4 4 0 01-4-4v-1a2 2 0 012-2h6l1 1 1-1h6a2 2 0 012 2v1a4 4 0 01-4 4z"></path>
+                                        </svg>
+                                        <p class="text-lg font-medium text-gray-400">Belum ada user terdaftar</p>
+                                        <p class="text-sm text-gray-400">Daftarkan user pertama menggunakan form di atas</p>
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        return;
+                    }
+                    
+                    // Populate table
+                    users.forEach(user => {
+                        const row = document.createElement('tr');
+                        row.className = 'hover:bg-gray-50 transition duration-200';
+                        
+                        const registrationDate = new Date(user.created_at).toLocaleDateString('id-ID');
+                        const lastActivity = user.last_activity ? 
+                            new Date(user.last_activity).toLocaleDateString('id-ID') : 'Belum ada aktivitas';
+                        
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="flex items-center">
+                                    <div class="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                        <span class="text-blue-800 font-bold text-sm">${user.fingerprint_id}</span>
+                                    </div>
+                                    <span class="text-sm font-medium text-gray-900">ID ${user.fingerprint_id}</span>
+                                </div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm font-medium text-gray-900">${user.name}</div>
+                                <div class="text-sm text-gray-500">Terakhir aktif: ${lastActivity}</div>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                ${registrationDate}
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                                    user.last_activity ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                                }">
+                                    ${user.last_activity ? 'Aktif' : 'Belum Absen'}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <button onclick="deleteUser(${user.id}, '${user.name}', ${user.fingerprint_id})" 
+                                        class="text-red-600 hover:text-red-900 transition duration-200">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </td>
+                        `;
+                        
+                        tbody.appendChild(row);
+                    });
+                } else {
+                    throw new Error(data.message || 'Failed to load users');
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                const tbody = document.getElementById('users-table-body');
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="px-6 py-4 text-center text-red-500">
+                            <div class="flex items-center justify-center">
+                                <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                Error loading users: ${error.message}
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        // FUNGSI BARU: Delete user
+        function deleteUser(userId, userName, fingerprintId) {
+            const deleteModal = document.getElementById('delete-modal');
+            const deleteMessage = document.getElementById('delete-message');
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            
+            deleteMessage.innerHTML = `
+                Apakah Anda yakin ingin menghapus user <strong>"${userName}"</strong>?<br><br>
+                <span class="text-sm text-gray-500">
+                    • Data akan dihapus dari database<br>
+                    • Fingerprint ID ${fingerprintId} akan dihapus dari sensor<br>
+                    • Semua data absensi user akan dihapus<br>
+                    • Tindakan ini tidak dapat dibatalkan
+                </span>
+            `;
+            
+            confirmBtn.onclick = () => confirmDeleteUser(userId, userName, fingerprintId);
+            
+            deleteModal.classList.remove('hidden');
+            deleteModal.classList.add('flex');
+        }
+
+        // FUNGSI BARU: Confirm delete user
+        async function confirmDeleteUser(userId, userName, fingerprintId) {
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            const originalText = confirmBtn.innerHTML;
+            
+            confirmBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Menghapus...
+            `;
+            confirmBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/delete-user', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        fingerprint_id: fingerprintId
+                    })
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    closeDeleteModal();
+                    showSuccess(`User "${userName}" berhasil dihapus!\n\nData telah dihapus dari database dan sensor.`);
+                    loadRegisteredUsers(); // Refresh the list
+                    checkESP32Status(); // Update ESP32 status
+                } else {
+                    showError(result.message || 'Gagal menghapus user');
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showError('Terjadi kesalahan saat menghapus user');
+            } finally {
+                confirmBtn.innerHTML = originalText;
+                confirmBtn.disabled = false;
+            }
+        }
+
+        // FUNGSI BARU: Close delete modal
+        function closeDeleteModal() {
+            const deleteModal = document.getElementById('delete-modal');
+            deleteModal.classList.add('hidden');
+            deleteModal.classList.remove('flex');
+        }
+
+        // Clear system function
+        async function clearSystem() {
+            const confirmed = confirm('⚠️ PERINGATAN!\n\nTindakan ini akan:\n• Menghapus SEMUA fingerprint dari sensor\n• Menghapus SEMUA data user dari database\n• Menghapus SEMUA data absensi\n\nApakah Anda yakin ingin melanjutkan?');
+            
+            if (!confirmed) {
+                return;
+            }
+
+            try {
+                const clearBtn = event.target;
+                const originalText = clearBtn.innerHTML;
+                clearBtn.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-3 h-4 w-4 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Clearing...
+                `;
+                clearBtn.disabled = true;
+
+                const response = await fetch('/api/clear-sensor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showSuccess('System berhasil di-reset!\n\nSemua data fingerprint dan database telah dihapus.\nAnda dapat mendaftarkan user baru sekarang.');
+                    setTimeout(() => { 
+                        checkESP32Status(); 
+                        loadRegisteredUsers();
+                    }, 2000);
+                } else {
+                    showError(result.message || 'Gagal melakukan clear system');
+                }
+            } catch (error) {
+                console.error('Clear system error:', error);
+                showError('Terjadi kesalahan saat melakukan clear system');
+            } finally {
+                setTimeout(() => {
+                    const clearBtn = document.querySelector('button[onclick="clearSystem()"]');
+                    if (clearBtn) {
+                        clearBtn.innerHTML = `
+                            <svg class="w-4 h-4 inline-block mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                            Clear System
+                        `;
+                        clearBtn.disabled = false;
+                    }
+                }, 1000);
+            }
+        }
+
+        // Check ESP32 status
+        async function checkESP32Status() {
+            try {
+                const response = await fetch('/api/esp32-status');
+                const data = await response.json();
+                
+                const statusDiv = document.getElementById('esp32-status');
+                const registerBtn = document.getElementById('register-btn');
+                
+                if (data.status === 'online') {
+                    statusDiv.innerHTML = `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                                <div>
+                                    <p class="text-green-800 font-medium">ESP32 Online</p>
+                                    <p class="text-sm text-green-600">Sensor: ${data.sensor || 'Connected'} | Templates: ${data.templates || 0}/${data.capacity || 0}</p>
+                                </div>
+                            </div>
+                            <div class="text-sm text-green-600 font-medium">
+                                Ready for Registration
+                            </div>
+                        </div>
+                    `;
+                    statusDiv.className = 'p-4 bg-green-50 border border-green-200 rounded-lg';
+                    registerBtn.disabled = false;
+                    
+                    // Initialize WebSocket if not connected
+                    if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+                        initWebSocket();
+                    }
+                } else {
+                    statusDiv.innerHTML = `
+                        <div class="flex items-center space-x-3">
+                            <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                            <div>
+                                <p class="text-red-800 font-medium">ESP32 Offline</p>
+                                <p class="text-sm text-red-600">${data.error || 'Cannot connect to ESP32'}</p>
+                            </div>
+                        </div>
+                    `;
+                    statusDiv.className = 'p-4 bg-red-50 border border-red-200 rounded-lg';
+                    registerBtn.disabled = true;
+                }
+            } catch (error) {
+                console.error('Error checking ESP32 status:', error);
+                const statusDiv = document.getElementById('esp32-status');
+                statusDiv.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <div class="w-3 h-3 bg-red-500 rounded-full"></div>
+                        <p class="text-red-800 font-medium">Connection Error</p>
+                    </div>
+                `;
+                statusDiv.className = 'p-4 bg-red-50 border border-red-200 rounded-lg';
+                document.getElementById('register-btn').disabled = true;
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('registration-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const name = document.getElementById('user-name').value.trim();
+            if (!name) {
+                showError('Nama user harus diisi');
+                return;
+            }
+
+            const registerBtn = document.getElementById('register-btn');
+            const originalText = registerBtn.innerHTML;
+            
+            registerBtn.innerHTML = `
+                <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline-block" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                Sedang mendaftarkan...
+            `;
+            registerBtn.disabled = true;
+
+            try {
+                const response = await fetch('/api/enroll-fingerprint', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: `name=${encodeURIComponent(name)}`
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    showSuccess(`User "${result.name}" berhasil didaftarkan!\nFingerprint ID: ${result.fingerprint_id}`);
+                    document.getElementById('user-name').value = '';
+                    
+                    setTimeout(() => { 
+                        checkESP32Status(); 
+                        loadRegisteredUsers();
+                    }, 1000);
+                } else {
+                    showError(result.message || 'Registrasi gagal');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                showError('Terjadi kesalahan saat registrasi');
+            } finally {
+                registerBtn.innerHTML = originalText;
+                registerBtn.disabled = false;
+            }
+        });
+
+        function showSuccess(message) {
+            document.getElementById('success-message').innerHTML = message.replace(/\n/g, '<br>');
+            document.getElementById('success-modal').classList.remove('hidden');
+            document.getElementById('success-modal').classList.add('flex');
+        }
+
+        function showError(message) {
+            document.getElementById('error-message').textContent = message;
+            document.getElementById('error-modal').classList.remove('hidden');
+            document.getElementById('error-modal').classList.add('flex');
+        }
+
+        function closeModal() {
+            document.getElementById('success-modal').classList.add('hidden');
+            document.getElementById('success-modal').classList.remove('flex');
+            document.getElementById('error-modal').classList.add('hidden');
+            document.getElementById('error-modal').classList.remove('flex');
+        }
+
+        // Initialize
+        checkESP32Status();
+        loadRegisteredUsers(); // Load users on page load
+        setInterval(checkESP32Status, 10000);
+        
+        // Initialize WebSocket
+        initWebSocket();
+    </script>
+
+    <!-- Custom CSS for animations -->
+    <style>
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-fadeIn {
+            animation: fadeIn 0.3s ease-out;
+        }
+    </style>
+</body>
+</html>
