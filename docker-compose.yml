@@ -1,23 +1,44 @@
-version: '3.8'
-
 services:
   mysql:
+    image: mysql:8.0
+    container_name: attendance_mysql
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
-      MYSQL_DATABASE: ${MYSQL_DATABASE}
-      MYSQL_USER: ${MYSQL_USER}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: attendance123
+      MYSQL_DATABASE: smart_classroom
+      MYSQL_USER: attendance_user
+      MYSQL_PASSWORD: attendance_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - attendance_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 20s
+      retries: 10
 
   flask_app:
+    build: .
+    container_name: attendance_flask
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
     environment:
       - MYSQL_HOST=mysql
       - MYSQL_PORT=3306
-      - MYSQL_USER=${MYSQL_USER}
-      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
-      - MYSQL_DATABASE=${MYSQL_DATABASE}
-      - ESP32_IP=${ESP32_IP}
+      - MYSQL_USER=attendance_user
+      - MYSQL_PASSWORD=attendance_pass
+      - MYSQL_DATABASE=smart_classroom
+      - ESP32_IP=192.168.89.42
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - attendance_network
 
-  # phpMyAdmin untuk manage database (opsional)
   phpmyadmin:
     image: phpmyadmin/phpmyadmin
     container_name: attendance_phpmyadmin
@@ -33,11 +54,9 @@ services:
     networks:
       - attendance_network
 
-# Define volumes untuk persistent data
 volumes:
   mysql_data:
 
-# Define network untuk komunikasi antar container
 networks:
   attendance_network:
     driver: bridge
